@@ -1,0 +1,538 @@
+-------------------Start Settings Section------------------
+---Note neither w nor h are directly related to Physical screen size
+---they just control in how many "pixels" the physical space is divided
+--- I recommend leaving it default and test then change and see what fits your screen
+---Also the bigger the numbers the smaller the text
+w = 100 --Screen Width 85
+h = 22 -- Screen Height 31
+adjustRefresh = 0
+
+defaultSize = 500 --- This is the stack size used to Calculate Capacity
+headerRow = 1 --- Row where the Header row is drawn
+startRow = 3  --- Row in which itemList starts
+startCol = 1 --- Col in which ItemList starts
+
+refreshTime = 60 --- Seconds between refresh of Screen also used to measure gain loss
+
+
+mediumThreshold = 40  ---when stock higher then this percentage bar color changes to yellow by default
+highThreshold = 90  ---when stock higher then this percentage bar color changes to green by default
+
+--- Here you can change the Colors of some elements
+--- Backcolors is for Background FrontColors for Foreground
+--- Colors that are used in the setColor Function need to exist in both tables
+--[[defaultChar = "White"
+defaultBack = "Black"
+rowEventChar = ""
+rowEventBack = ""
+local defaultAlpha = 1
+
+colors = {
+    Normal = {0.5, 0.5, 0.5, defaultAlpha},
+    Number = {0.1, 0.1, 0.5, defaultAlpha},
+    White = {1,1,1,defaultAlpha},
+    Black = {0,0,0,defaultAlpha},
+    Blue = {0,0,0.5, defaultAlpha},
+    Green = {0, 0.57, 0, defaultAlpha},
+    LightRed = {1, 0, 0, defaultAlpha},
+    Brown = {0.5, 0,0,defaultAlpha},
+    Purple = {0.61, 0, 0.61, defaultAlpha},
+    Orange = {0.99, 0.5, 0, defaultAlpha},
+    Yellow = {1, 1, 0, defaultAlpha},
+    LightGreen = {0, 0.99, 0, defaultAlpha},
+    Cyan = {0, 0.57, 0.57, defaultAlpha},
+    LightCyan = {0, 1, 1, defaultAlpha},
+    LightBlue = {0.4, 0.4, 0.99, defaultAlpha},
+    Pink = {1, 0, 1, defaultAlpha},
+    Grey = {0.5, 0.5, 0.5, defaultAlpha},
+    LightGrey = {0.83, 0.83, 0.83, defaultAlpha},
+}]]--
+
+--[[t = colors[defaultChar]
+print(t)
+for k,v in pairs(t) do
+ print(v)
+end]]--
+
+
+
+BackColors = {default= {0,0,0,0},
+              rowEven={0.5,0.5,0.5,0.4},
+              rowOdd = {0,0.57,0,0.7},
+              header={0.99, 0.5, 0,0.8},
+              lowStockBar={255,0,0,1},
+              mediumStockBar={50,50,0,1},
+              highStockBar={0,255,0,1},
+              nextButton={0.99, 0.5, 0,0.8},
+              prevButton={0.99, 0.5, 0,0.8},
+              refButton={0.99, 0.5, 0,0.8}}
+
+FrontColors = {default= {255,255,255,1},
+               rowEven={255,255,255,1},
+               rowOdd = {255,255,255,1},
+               header={0,0,0,1},
+               nextButton={0,0,0,1},
+               prevButton={0,0,0,1},
+               refButton={0,0,0,1}}
+
+--- In this table you can change the Column attributes
+--- width is the Columnwidth be aware that these are cut off if text is longer then width
+--- header is the Text in the Header Column
+--- offset allows you to move header text left or right
+--- Note: Changing Header text does not change the content for that you need to adjust the code in the drawRows function
+Columns = {}
+Columns[0] = {width = 29,header="Item",offset = 0}
+Columns[1] = {width = 10,header="Current",offset = 0}
+Columns[2] = {width = 10,header="Max",offset = 0}
+Columns[3] = {width = 10,header=" %",offset = 0}
+Columns[4] = {width = 10,header="Change",offset = -3}
+Columns[5] = {width = 12,header="Visual",offset = 0}
+
+buttonText_NextPage = "  Next Page  "
+buttonText_PrevPage = "  Prev Page  "
+buttonText_Refresh = "  Refresh  "
+
+--- Only change code outside of the settings area if you know what you are doing ;)
+-------------------End Settings Section------------------
+------------------Stack Size Settings------------------
+stackSize = {
+    ["Iron Ingot"] = 100,
+    ["Copper Ingot"] = 100,
+    ["Caterium Ore"] = 100,
+    ["Caterium Ingot"] = 100,
+    ["Steel Ingot"] = 90,
+    ["Iron Plate"] = 100,
+    ["Iron Rod"] = 100,
+    ["Steel Beam"] = 100,
+    ["Steel Pipe"] = 100,
+    ["Quickwire"] = 500,
+    ["Wire"] = 500,
+    ["Cable"] = 100,
+    ["Screw"] = 500,
+    ["Copper Sheet"] = 100,
+    ["Heavy Modular Frame"] = 50,
+    ["Modular Frame"] = 50,
+    ["Concrete"] = 100,
+    ["Silica"] = 100,
+    ["Iron Ore"] = 100,
+    ["Copper Ore"] = 100,
+    ["Uranium"] = 100,
+    ["Uranium Waste"] = 500,
+    ["Coal"] = 100,
+    ["Petroleum Coke"] = 100,
+    ["Bauxite"] = 100,
+    ["Quartz"] = 100,
+    ["Limestone"] = 100,
+    ["Encased Industrial Beam"] = 100,
+    ["Plastic"] = 100,
+    ["Rubber"] = 100,
+    ["Crystal Oscillator"] = 100,
+    ["Circuit Board"] = 200,
+    ["High-Speed Connector"] = 100,
+    ["Supercomputer"] = 50,
+    ["Computer"] = 50,
+    ["AI Limiter"] = 100,
+    ["Rotor"] = 100,
+    ["Motor"] = 50,
+    --["Photovoltaic Cell"] = 10,
+    ["Biomass"] = 100,
+    ["Reinforced Iron Plate"] = 100,
+    ["Quartz Crystal"] = 100,
+    ["Raw Quartz"] = 100,
+    ["Stator"] = 50,
+    ["Empty Canister"] = 100,
+    ["Crude Oil"] = 50,
+    ["Heavy Oil Residue"] = 50,
+    ["Sulfuric Acid"] = 50,
+    ["Water"] = 50,
+    ["Black powder"] = 100,
+    ["Sulfur"] = 100,
+    ["Carbon Mesh"] = 10,
+    ["Carbon Dust"] = 10,
+    ["Packaged Oil"] = 100,
+    ["Packaged Water"] = 100,
+    ["Packaged Heavy Oil Residue"] = 100,
+    ["Packaged Fuel"] = 100,
+    ["Packaged Alumina Solution"] = 100,
+    ["Packaged Liquid Biofuel"] = 100,
+    ["Packaged Sulfuric Acid"] = 100,
+    ["Fuel"] = 100,
+    ["Liquid Biofuel"] = 100,
+    ["Alien Organs"] = 100,
+    ["Alien Carapace"] = 100,
+    ["Wood"] = 100,
+    ["Mycelia"] = 200,
+    ["Leaves"] = 500,
+    ["Automated Wiring"] = 50,
+    ["Smart Plating"] = 50,
+    ["Modular Engine"] = 50,
+    ["Versatile Framework"] = 50,
+    ["Adaptive Control Unit"] = 50,
+    ["Flower Petals"] = 500,
+    ["Blue Power Slug"] = 50,
+    ["Green Power Slug"] = 50,
+    ["Yellow Power Slug"] = 50,
+    ["Purple Power Slug"] = 50,
+    ["FICSMAS Gift"] = 100,
+    ["Polymer Resin"] = 200,
+    ["Solid Biofuel"] = 200,
+    ["Radio Control Unit"] = 50,
+    ["Alumina Solution"] = 50,
+    ["Aluminum Casing"] = 200,
+    ["Aluminum Ingot"] = 100,
+    ["Aluminum Scrap"] = 500,
+    ["Aluminum Clad Sheet"] = 200,
+    ["Alclad Aluminum Sheet"] = 200,
+    ["Beacon"] = 100,
+    ["Gunpowder"] = 50,
+    ["Nobelisk"] = 50,
+    ["Medicinal Inhaler"] = 50,
+--Mods Support--
+  -- Ficsit Farming --
+    ["Apple"] = 50,
+    ["Banana"] = 50,
+    ["Carrot"] = 50,
+    ["Corn"] = 50,
+    ["Cotton"] = 50,
+    ["Potato"] = 100,
+    ["Pumpkin"] = 100,
+    ["Wheat"] = 200,
+    ["Yosse Berry"] = 100,
+    ["Apple Pie"] = 100,
+    ["Banana Pie"] = 100,
+    ["Berry Pie"] = 100,
+    ["Doggo Chow"] = 100,
+  -- End Ficsit Farming --
+}
+------------------End StackSize Settings------------------
+-------------------Start Helper Functions------------------
+function setBackgroundColor(colorName)
+    gpu:setBackground(BackColors[colorName][1],BackColors[colorName][2],BackColors[colorName][3],BackColors[colorName][4])
+end
+
+function setForegroundColor(colorName)
+    gpu:setForeground(FrontColors[colorName][1],FrontColors[colorName][2],FrontColors[colorName][3],FrontColors[colorName][4])
+end
+
+function setColor(colorName)
+    setBackgroundColor(colorName)
+    setForegroundColor(colorName)
+end
+
+function setDefaultColor()
+    setColor("default")
+end
+
+function setRowColor(rowNum)
+    if rowNum % 2 == 0 then
+        setColor("rowEven")
+    else
+        setColor("rowOdd")
+    end
+end
+
+function clearScreen()
+    setDefaultColor()
+    gpu:fill(0,0,w,h," ")
+    gpu:flush()
+end
+
+function pairsByKeys (t, f)
+    local a = {}
+    for n in pairs(t) do table.insert(a, n) end
+    table.sort(a, f)
+    local i = 0
+    local iter = function ()
+        i = i + 1
+        if a[i] == nil then return nil
+        else return a[i], t[a[i]]
+        end
+    end
+    return iter
+end
+
+function fillString(str,len)
+    local trimmedText = string.sub(str,0,len)
+    return trimmedText .. string.rep(" ",len-string.len(trimmedText))
+end
+
+function format_int(number)
+
+    local i, j, minus, int, fraction = tostring(number):find('([-]?)(%d+)([.]?%d*)')
+
+    --- reverse the int-string and append a comma to all blocks of 3 digits
+    int = int:reverse():gsub("(%d%d%d)", "%1'")
+
+    --- reverse the int-string back remove an optional comma and put the
+    --- optional minus and fractional part back
+    return minus .. int:reverse():gsub("^'", "") .. fraction
+end
+
+function getItemsPerPage()
+    return h-2-startRow
+end
+
+function setMaxPages()
+    maxItemsPerPage = getItemsPerPage()
+    totalItems = 0
+    for _ in pairs(items) do
+    --for k,v in pairs(items) do
+        totalItems = totalItems + 1
+    end
+    maxPage = totalItems/maxItemsPerPage
+end
+
+----------------------End Helper Functions------------------
+
+----------------------Start Functions for Display Stuff ------------------
+
+function drawHeader(row)
+    local colStart = startCol
+    setColor("header")
+    for i = 0,#Columns,1 do
+        local col = Columns[i]
+        gpu:setText(colStart+col.offset,headerRow,fillString(col.header,col.width))
+        colStart = colStart + col.width
+    end
+    gpu:flush()
+end
+
+
+function drawButtons()
+    local x
+    setColor("prevButton")
+    gpu:setText(0,h-2,buttonText_PrevPage)
+    setColor("nextButton")
+    gpu:setText(w-14,h-2,buttonText_NextPage)
+    setColor("refButton")
+    --resScale(w)
+    x = math.floor(w/2-string.len(buttonText_Refresh)/2)
+    print(x)
+    gpu:setText(x,h-2,buttonText_Refresh)
+    setDefaultColor()
+print(w-50)
+print(math.floor(w/2-string.len(buttonText_Refresh)/2))
+end
+
+
+
+function drawBar(x,y,capacityPercent)
+    setDefaultColor()
+    gpu:setText(x,y,"|")
+    if capacityPercent > 0 and capacityPercent <= 50 then
+        setBackgroundColor("lowStockBar")
+    elseif capacityPercent > 50 and capacityPercent <= 90 then
+        setBackgroundColor("mediumStockBar")
+    else
+        setBackgroundColor("highStockBar")
+    end
+    BarLen =math.floor(capacityPercent/10)
+    if BarLen < 1 then BarLen = 1 end
+    gpu:setText(x+1,y,fillString("",BarLen))
+    setDefaultColor()
+    gpu:setText(x+11,y,"|")
+end
+
+function getItemChange(itemName,itemInfo)
+    if itemsLast[itemName] ~= nil then
+        change = itemInfo.count - itemsLast[itemName].count
+    else
+        change = "-"
+    end
+    return change
+end
+
+function drawRows()
+    local currentRow = 0
+    local columnValues = {}
+    local currentIndex = 1
+    local itemsPerPage = getItemsPerPage()
+    local maxIndex = itemsPerPage*page
+    local minIndex = maxIndex - itemsPerPage +1
+
+    currentRow = currentRow+startRow
+
+    for itemName,itemInfo in pairsByKeys(items) do
+        if currentIndex >= minIndex and currentIndex <= maxIndex then
+            local capacityPercent = math.floor(itemInfo.count/itemInfo.capacity*100)
+            columnValues[0] = itemName
+            columnValues[1] = format_int(itemInfo.count)
+            columnValues[2] = format_int(itemInfo.capacity)
+            columnValues[3] = capacityPercent
+            columnValues[4] = getItemChange(itemName,itemInfo)
+            columnValues[5] = "Graph"
+
+            local colStart = startCol
+            for i = 0,#Columns,1 do
+                setRowColor(currentRow)
+                local col = Columns[i]
+                if columnValues[i] == "Graph" then
+                    drawBar(colStart+col.offset,currentRow,capacityPercent)
+                else
+                    gpu:setText(colStart+col.offset,currentRow,fillString(columnValues[i],col.width))
+                end
+
+                colStart = colStart + col.width
+            end
+            currentRow = currentRow + 1
+        end
+        currentIndex = currentIndex +1
+    end
+    itemsLast = items
+end
+
+function DrawTable()
+    clearScreen()
+    drawHeader()
+    drawRows()
+    drawButtons()
+    gpu:flush()
+end
+
+--[[function resScale(w)
+ if w >= 100 then
+  wR = w/2-string.len(buttonText_Refresh)
+ else
+  wR = w/2-string.len(buttonText_Refresh)/2
+ end
+end]]--
+----------------------Start Timer Functions ------------------
+
+local initProgress = {["currentTime"] = computer.millis()}
+
+function difTime(time)
+	time = time or 0
+	local dif = (computer.millis() - time) / 1000
+	local s, min, h = dif % 60, math.floor(dif / 60) % 60, math.floor(dif / 3600)
+
+	return string.format("%02.fh %02.fmin %02.fs", h, min, s)
+end
+
+function showTimer()
+ gpu:setForeground(1,1,1,1)
+ --gpu:setSize(80)
+  if w >= 100 then   
+   gpu:setText(0, h-1, "Run Time: " .. difTime(initProgress["currentTime"]))
+  else
+   gpu:setText(w * .5+ - 20, h-1, "Run Time: " .. difTime(initProgress["currentTime"]))
+  end
+ print(difTime(initProgress["currentTime"]))
+ gpu:flush()
+end
+----------------------End Timer Functions ------------------
+----------------------Start Functions for Grabbing Container Info ------------------
+
+function getContainerInfo(container)
+    inv = container:getInventories()[1]
+    inventorySize = inv.size
+    inv:sort()
+    if itemStackSize == nil then
+     itemStackSize = defaultSize
+     debugData =itemName
+    end
+    maxInventory = itemStackSize*inventorySize 
+    print(debugData)
+    containerInfo = {name = "nothing", count = 0,capacity=inventorySize}
+    for i=0,inventorySize-1,1 do
+        stack = inv:getStack(i)
+        if stack.item.type then
+            itemName = stack.item.type.name
+            itemCount = inv.itemCount
+            itemStackSize = stackSize[itemName]
+            maxInventory = itemStackSize*inventorySize 
+            debugData = string.format("%s: %d - Max Size: %d",itemName,stackSize[itemName],maxInventory)
+            containerInfo = {name=itemName,count = itemCount,capacity = maxInventory}
+            return containerInfo
+        end
+    end
+  return containerInfo
+end
+
+function addToItems(containerInfo)
+    if items[containerInfo.name] == nil then
+        items[containerInfo.name] = containerInfo
+    else
+        items[containerInfo.name].count = items[containerInfo.name].count + containerInfo.count
+        items[containerInfo.name].capacity = items[containerInfo.name].capacity + containerInfo.capacity
+    end
+end
+
+----------------------End Functions for Grabbing Container Info ------------------
+
+--- Grabing Components and initializing Global Variables
+
+Containers = component.proxy(component.findComponent(findClass("FGBuildableStorage")))
+gpu = computer.getPCIDevices(findClass("GPUT1"))[1]
+comp = component.findComponent(findClass("Screen"))[1]
+screen = component.proxy(comp)
+gpu:bindScreen(screen)
+gpu:setSize(w,h)
+event.listen(gpu)
+
+pages = {}
+items = {}
+itemsLast = {}
+page = 1
+maxPage = 1
+lastRefresh = computer.millis()
+firstStart = true
+--local initProgress = {["currentTime"] = computer.millis()}*
+function getContainerData()
+ Containers = component.proxy(component.findComponent(findClass("FGBuildableStorage")))
+ items = {}
+  for _,v in pairs(Containers) do
+   CurrentInfo = getContainerInfo(v)
+    if CurrentInfo.name ~= "nothing" then
+     addToItems(CurrentInfo)
+    end
+  end
+end
+---Main Loop---
+
+if firstStart then
+ x,y = gpu:getSize()
+ print(x,y)
+end
+print(refreshData)
+while true do
+    if computer.millis()-lastRefresh >= refreshTime*1000 or firstStart then
+        firstStart = false
+        --Containers = component.proxy(component.findComponent(findClass("FGBuildableStorage")))
+        --items = {}
+        --for _,v in pairs(Containers) do
+         --   CurrentInfo = getContainerInfo(v)
+          --  if CurrentInfo.name ~= "nothing" then
+          --      addToItems(CurrentInfo)
+          --  end
+        --end
+        getContainerData()
+        setMaxPages()
+        DrawTable()
+        itemsLast = items
+        lastRefresh = computer.millis()
+         --showTimer()
+    end
+
+    showTimer()
+
+    signal, sender, x, y = event.pull(refreshTime)
+    if signal == "OnMouseDown" then--or "OnMouseLeft" then
+     local xR
+        if x>=0 and x<=string.len(buttonText_PrevPage) and y==h-2 and page > 1 then
+            page=page-1
+            DrawTable()
+        end
+        if x>=w-string.len(buttonText_NextPage) and x<=w and y==h-2  and page < maxPage then
+            page=page+1
+            DrawTable()
+        end
+        --resScale(w)
+        
+        --if x>=wR and x<=wR+string.len(buttonText_Refresh) and y==h-2 then
+        xR = math.floor(w/2-string.len(buttonText_Refresh)/2)
+        if x>=xR and x<=xR+string.len(buttonText_Refresh) and y==h-2 then
+            getContainerData()
+            DrawTable()
+        end        
+    end
+end
