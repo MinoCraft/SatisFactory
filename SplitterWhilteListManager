@@ -1,0 +1,87 @@
+---- Splitter WhiteList Manager ----
+---- V 1.0.0 - WIP ----
+
+
+---------- Configs Section ----------
+
+COMP_NAME = "test" 
+-- 0 = LEFT ; 1 = CENTER ; 2 = RIGHT --
+MAIN_OUT = 1
+OVERFLOW_OUT = 0   
+DEBUG_ACTIVE = true
+TIMER = 1
+LIST = {
+"Concrete"
+}
+---------- End Configs Section ----------
+-----------------------------------------
+
+
+---------- Peripheral Wrap Section ----------
+
+
+COMP = component.proxy(component.findComponent(COMP_NAME)[1])
+
+
+---------- End Peripheral Wrap Section ----------
+-------------------------------------------------
+
+---------- Init Var Section ----------
+
+
+--itemInput = { }
+
+---------- End Init Var Section ----------
+------------------------------------------
+
+
+---------- Function Section ----------
+function debug(text, force) if (DEBUG_ACTIVE or force==1) then print(text) end  end
+
+--input = 0
+
+function checkComponent()
+ i = COMP:getInput(4)
+ --itemInput = { }
+  --for input = 0, 2, 1 do
+  if i.type then 
+   itemSlot = 4
+   debug(""..itemSlot.." "..i.type.name) 
+   itemName = i.type.name
+   debug("Item Name: "..tostring(itemName))
+-- ckeckList(itemName)
+    for _,v in pairs(LIST) do
+      if itemName == v then print(tostring(itemName).." == "..tostring(v)) COMP:transferItem(MAIN_OUT)
+      elseif itemName ~= v then print("Not Matching Item - Redirecting ...") COMP:transferItem(OVERFLOW_OUT)
+      end
+    end
+--  else
+--   itemSlot = 4
+--   itemName = i.type.name
+--   table.remove(itemInput,itemName)
+--   debug("Item Name: "..tostring(itemName))
+  end
+end
+
+--function checkList(itemName)
+--  for _,v in pairs(LIST) do
+--    if itemName == v then print(tostring(itemName).." == "..tostring(v)) COMP:transferItem(MAIN_OUT)
+--    elseif itemName ~= v then print("Not Matching Item - Redirecting ...") COMP:transferItem(OVERFLOW_OUT)
+--    end
+--  end
+--end
+
+---------- End Function Section ----------
+------------------------------------------
+
+
+---------- Main Loop Section ----------
+
+while true do
+ t = event.pull(TIMER)
+ debug("Event: "..tostring(t))
+ checkComponent()         
+end
+
+---------- End Mian Loop Section ----------
+-------------------------------------------
