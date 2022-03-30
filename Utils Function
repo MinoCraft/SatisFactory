@@ -1,0 +1,44 @@
+---- Function Debug ----
+
+debug("string", number)
+
+function debug(text, force) if (DEBUG_ACTIVE or force==1) then print(text) end  end
+
+---- End Function Debug ----
+----------------------------
+
+
+---- Run Time ----
+refreshTime = 60
+local initProgress = {["currentTime"] = computer.millis()}
+
+function difTime(time)
+	time = time or 0
+	local dif = (computer.millis() - time) / 1000
+	local s, min, h = dif % 60, math.floor(dif / 60) % 60, math.floor(dif / 3600)
+
+	return string.format("%02.fh %02.fmin %02.fs", h, min, s)
+end
+
+function showTimer()
+ gpu:setForeground(1,1,1,1)
+ --gpu:setSize(80)
+  if w >= 100 then   
+   gpu:setText(0, h-1, "Run Time: " .. difTime(initProgress["currentTime"]))
+  else
+   gpu:setText(w * .5+ - 20, h-1, "Run Time: " .. difTime(initProgress["currentTime"]))
+  end
+ print(difTime(initProgress["currentTime"]))
+ gpu:flush()
+end
+
+showTimer()
+
+lastRefresh = computer.millis()
+if computer.millis()-lastRefresh >= refreshTime*1000 or firstStart then
+ -- Code here will run every refreshTime
+ lastRefresh = computer.millis()
+end
+
+---- End Run Time ----
+---------------------
