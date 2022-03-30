@@ -1,0 +1,166 @@
+--------------------------------------
+---------- WORK IN PROGRESS ----------
+--------------------------------------
+List = { }
+
+---------- Configs Section ----------
+
+DEBUG_ACTIVE = true
+
+buffer_name = "Buffer" -- Overflow Container Name
+machines_name = "Build_FF_CookingHub_C"
+refreshTime = 30 -- Tempo main loop 
+List = {
+ "Doggo Chow",
+ "Apple Pie",
+ "Banana Pie",
+ "Berry Pie"
+}
+
+SPLITER_NAME = "SPLITER" 
+-- 0 = LEFT ; 1 = CENTER ; 2 = RIGHT --
+MAIN_OUT = 2
+OVERFLOW_OUT = 0   
+TIMER = 5
+LISTREFILL = {           -- Automated Soon
+"Doggo Chow"
+}
+
+---------- End Configs Section ----------
+
+---------- Link Component Section ----------
+
+buffer = component.proxy(component.findComponent("Buffer"))
+Machines = component.proxy(component.findComponent(findClass(machines_name)))
+spliter = component.proxy(component.findComponent(SPLITER_NAME)[1])
+local gpu = computer.getPCIDevices(findClass("GPU_T1_C"))[1]
+
+---------- End Link Component Section ----------
+
+
+---------- Var Init Section ----------
+
+firstStart = true
+chowFull = false
+item = { }
+tempBuffer = buffer[1]
+inv = tempBuffer:getInventories()[1]
+
+
+
+---------- End Init Section ----------
+
+---------- Functions Section ----------
+
+function debug(text, force) if (DEBUG_ACTIVE or force==1) then print(text) end  end
+
+function getInventory()
+ invSize = inv.Size
+ inv:sort()
+ print("Items in Inventory: "..inv.itemCount)
+  for i =0,invSize-1,1 do
+   stack = inv:getStack(i)
+    if stack.item.type then
+     itemName = stack.item.type.name
+     itemCount = inv.itemCount
+     print("Slot "..i..": "..itemName)
+      overflowList(itemName)
+      if itemName == listedName then
+       List[itemName] = true
+       print(itemName..": "..tostring(List[itemName]))
+      end
+    end
+  end
+end
+
+
+function overflowList(name)
+  for _,v in pairs(List) do
+    if name == v then
+     listedName = v
+     break
+    end
+  end
+end
+
+                                                           
+function machinesControl()
+ local r 
+  for _,v in pairs(Machines) do
+   r = v:getRecipe().name
+   overflowList(r)
+   if r == listedName then
+     if List[r] and not v.standby then
+      v.standby = true 
+      state = string.format("%s -> %s",v,v.standby)
+     elseif not List[r] and v.standby then
+      v.standby = false
+      state = string.format("Machine: %s -> %s",v,v.standby)     
+     else
+      state = string.format("Machine: %s -> %s",v,v.standby)
+     end
+   end
+  end
+end
+
+function initList(List)
+  for _,v in ipairs(List) do
+   List[v] = false
+  end
+end
+
+--local initProgress = {["currentTime"] = computer.millis()}
+--function difTime(time)
+--	time = time or 0
+--	local dif = (computer.millis() - time) / 1000
+--	local s, min, h = dif % 60, math.floor(dif / 60) % 60, math.floor(dif / 3600)
+
+--	return string.format("%02.fh %02.fmin %02.fs", h, min, s)
+--end
+
+function checkSpliter()
+ i = spliter:getInput(4)
+  if i.type then 
+   itemSlot = 4
+   debug(""..itemSlot.." "..i.type.name) 
+   itemName = i.type.name
+   debug("Item Name: "..tostring(itemName))
+    for _,v in pairs(LISTREFILL) do
+--debug("Item Name _: "..tostring(_))
+      if itemName == v and type(v) == "string" then print(tostring(itemName).." - Matching - "..tostring(v)) spliter:transferItem(MAIN_OUT)
+      elseif itemName ~= v and type(v) == "string" then print(tostring(itemName).." - Not Matching - "..tostring(v)) spliter:transferItem(OVERFLOW_OUT)
+      end
+    end
+  end
+end
+
+---------- End Functions Section ----------
+
+---------- Main Loop ----------
+
+--lastRefresh = computer.millis()
+lastAlert = false
+initList(List)
+
+while true do
+ t = event.pull(TIMER)
+  --if computer.millis()-lastRefresh >= refreshTime*1000 or firstStart then
+   --firstStart = false
+   getInventory()
+    for _,v in pairs(item) do
+      if v == List[itemName] then
+        check = inv:getStack(_)
+        if not check.item.type then
+         List[itemName] = false
+          if #item ~= 0 then
+           machinesControl()
+           table.remove(item,_)
+          end
+        end 
+      end
+    end
+ machinesControl()
+ checkSpliter()
+   --lastRefresh = computer.millis()
+  --end
+end
