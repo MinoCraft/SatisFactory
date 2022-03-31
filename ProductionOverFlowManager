@@ -87,7 +87,7 @@ function getInventory()
        print(itemName..": "..tostring(List[itemName]))
       end
       else
-        if #item ~= 0 and i = k-1 then table.remove(item,k) end
+        if #item ~= 0 and i == k-1 then table.remove(item,k) end
     end
   end
 end
