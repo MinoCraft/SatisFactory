@@ -1,7 +1,6 @@
 --------------------------------------
 ---------- WORK IN PROGRESS ----------
 --------------------------------------
-List = { }
 
 ---------- Configs Section ----------
 
@@ -22,53 +21,75 @@ SPLITER_NAME = "SPLITER"
 MAIN_OUT = 2
 OVERFLOW_OUT = 0   
 TIMER = 5
-LISTREFILL = {           -- Automated Soon
+LISTREFILL = {
 "Doggo Chow"
 }
 
----------- End Configs Section ----------
+SCREEN_NAME = "s"
+w,h = 15,15
 
----------- Link Component Section ----------
+BackColors = {default= {0,1,0,1}}
+              
+FrontColors = {default= {0.01,0.01,0.01,1}}
+
+---------- END CONFIG SECTION ----------
+-----------------------------------------
+
+
+---------- LINK COMPONENTS SECTION ----------
 
 buffer = component.proxy(component.findComponent("Buffer"))
 Machines = component.proxy(component.findComponent(findClass(machines_name)))
 spliter = component.proxy(component.findComponent(SPLITER_NAME)[1])
 local gpu = computer.getPCIDevices(findClass("GPU_T1_C"))[1]
+gpu = computer.getPCIDevices(findClass("GPUT1"))[1]
+local scr = component.proxy(component.findComponent(SCREEN_NAME)[1])
 
----------- End Link Component Section ----------
+---------- END LINK COMPONENTS SECTION ----------
+-------------------------------------------------
 
 
----------- Var Init Section ----------
+---------- VAR INIT SECTION ----------
 
 firstStart = true
 chowFull = false
 item = { }
 tempBuffer = buffer[1]
 inv = tempBuffer:getInventories()[1]
+gpu:bindScreen(scr)
+h,l = gpu:getSize()
+print(h,l)
+gpu:setSize(15,15)
 
 
 
----------- End Init Section ----------
+---------- END VAR INIT SECTION ----------
+------------------------------------------
 
----------- Functions Section ----------
+---------- FUNCTION SECTION ----------
 
 function debug(text, force) if (DEBUG_ACTIVE or force==1) then print(text) end  end
 
 function getInventory()
+ item = { }
  invSize = inv.Size
  inv:sort()
  print("Items in Inventory: "..inv.itemCount)
   for i =0,invSize-1,1 do
    stack = inv:getStack(i)
+   k = i+1
     if stack.item.type then
      itemName = stack.item.type.name
      itemCount = inv.itemCount
      print("Slot "..i..": "..itemName)
+     item[k] = itemName
       overflowList(itemName)
       if itemName == listedName then
        List[itemName] = true
        print(itemName..": "..tostring(List[itemName]))
       end
+    --else
+      --if #item ~= 0 then table.remove(item,k) end
     end
   end
 end
@@ -109,15 +130,6 @@ function initList(List)
   end
 end
 
---local initProgress = {["currentTime"] = computer.millis()}
---function difTime(time)
---	time = time or 0
---	local dif = (computer.millis() - time) / 1000
---	local s, min, h = dif % 60, math.floor(dif / 60) % 60, math.floor(dif / 3600)
-
---	return string.format("%02.fh %02.fmin %02.fs", h, min, s)
---end
-
 function checkSpliter()
  i = spliter:getInput(4)
   if i.type then 
@@ -134,18 +146,60 @@ function checkSpliter()
   end
 end
 
----------- End Functions Section ----------
+---------- END FUNCTION SECTION ----------
+------------------------------------------
 
----------- Main Loop ----------
+---------- SCREEN SECTION ----------
+
+function setBackgroundColor(colorName)
+    gpu:setBackground(BackColors[colorName][1],BackColors[colorName][2],BackColors[colorName][3],BackColors[colorName][4])
+end
+
+function setForegroundColor(colorName)
+    gpu:setForeground(FrontColors[colorName][1],FrontColors[colorName][2],FrontColors[colorName][3],FrontColors[colorName][4])
+end
+
+function setColor(colorName)
+    setBackgroundColor(colorName)
+    setForegroundColor(colorName)
+end
+
+function setDefaultColor()
+    setColor("default")
+end
+
+function clearScreen()
+    setDefaultColor()
+    gpu:fill(0,0,w,h," ")
+    gpu:flush()
+end
+
+function listOnScreen()
+ gpu:setText(x,0,"Amount: "..tostring(itemCount))
+ --y = 2
+ gpu:setText(x,2,"Items: ")
+ y = 3
+  for _,v in pairs(item) do
+   gpu:setText(x,y,v.." ("..tostring(_)..")")
+   y = y+1
+    if y >= h then y = 3 end
+  end
+ gpu:flush()
+end
+
+---------- END SCREEN SECTION ----------
+----------------------------------------
+
+---------- MAIN LOOP ----------
 
 --lastRefresh = computer.millis()
 lastAlert = false
 initList(List)
 
+clearScreen()
+
 while true do
  t = event.pull(TIMER)
-  --if computer.millis()-lastRefresh >= refreshTime*1000 or firstStart then
-   --firstStart = false
    getInventory()
     for _,v in pairs(item) do
       if v == List[itemName] then
@@ -161,6 +215,5 @@ while true do
     end
  machinesControl()
  checkSpliter()
-   --lastRefresh = computer.millis()
-  --end
+ listOnScreen()
 end
