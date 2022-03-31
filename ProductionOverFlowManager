@@ -25,12 +25,10 @@ LISTREFILL = {
 "Doggo Chow"
 }
 
-SCREEN_NAME = "s"
-w,h = 15,15
-
-BackColors = {default= {0,1,0,1}}
-              
-FrontColors = {default= {0.01,0.01,0.01,1}}
+SCREEN_NAME = "s" -- Screen Name
+w,h = 15,15 -- Text Size
+BackColors = {default= {0,1,0,1}} -- Background Color          
+FrontColors = {default= {0.01,0.01,0.01,1}} -- Foreground Color
 
 ---------- END CONFIG SECTION ----------
 -----------------------------------------
@@ -88,8 +86,8 @@ function getInventory()
        List[itemName] = true
        print(itemName..": "..tostring(List[itemName]))
       end
-    --else
-      --if #item ~= 0 then table.remove(item,k) end
+      else
+        if #item ~= 0 and i = k-1 then table.remove(item,k) end
     end
   end
 end
