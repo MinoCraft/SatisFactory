@@ -1,34 +1,68 @@
 --------------------------------------
+------------ CLIENT SIDE  ------------
 ---------- WORK IN PROGRESS ----------
 --------------------------------------
 
 ---------- Configs Section ----------
 
 DEBUG_ACTIVE = true
+TIMER_IDLE = 10
+TIMER_WORKING = 5
+RATIO_MIN = 99
+
+---- Containers & Machines Section ----
 
 buffer_name = "Buffer" -- Overflow Container Name
 machines_name = "Build_FF_CookingHub_C"
-refreshTime = 30 -- Tempo main loop 
-List = {
- "Doggo Chow",
+
+List = { }
+ --[["Doggo Chow",
  "Apple Pie",
  "Banana Pie",
  "Berry Pie"
-}
+} ]]--
+
+---- End Containers & Machines Section ----
+
+---- Spliter Section ----
 
 SPLITER_NAME = "SPLITER" 
 -- 0 = LEFT ; 1 = CENTER ; 2 = RIGHT --
 MAIN_OUT = 2
-OVERFLOW_OUT = 0   
-TIMER = 5
-LISTREFILL = {
-"Doggo Chow"
-}
+OVERFLOW_OUT = 0
 
-SCREEN_NAME = "s" -- Screen Name
-w,h = 15,15 -- Text Size
-BackColors = {default= {0,1,0,1}} -- Background Color          
-FrontColors = {default= {0.01,0.01,0.01,1}} -- Foreground Color
+--[[LISTREFILL = {
+"Doggo Chow"
+}]]--
+
+---- End Spliter Section ----
+---- Merger Section ----
+
+MERGER_NAME = "MERGER" 
+-- 0 = RIGHT ; 1 = CENTER ; 2 = LEFT --
+REFILL_IN   = 2
+OVERFLOW_IN = 1 -- Not Used
+
+---- End Merger Section ----
+
+---- Screen Section ----
+
+SCREEN_NAME = "s"    -- Screen Name
+w,h = 15,15    -- Text Size
+BackColors = {default= {0,1,0,1}}    -- Background Color
+FrontColors = {default= {0.01,0.01,0.01,1}}   -- Foreground Color
+COLOR_BG =  "LIME"    -- Background Color
+COLOR_FG =  "WHITE"    -- Foreground Color
+---- End Screen Section ----
+
+
+---- Network Section ----
+
+NETWORK_UUID = "740C17ED48139F18BF431EAF758D92D1" -- Network Card UUID
+NETWORK_PORT = 10                                 -- Network Channel
+NETWORK_UUID_SERVER = "E4847B6540BCB743068D1AB1A4216AB5" -- Server Network Card UUID
+
+---- End Network Section ----
 
 ---------- END CONFIG SECTION ----------
 -----------------------------------------
@@ -36,30 +70,71 @@ FrontColors = {default= {0.01,0.01,0.01,1}} -- Foreground Color
 
 ---------- LINK COMPONENTS SECTION ----------
 
-buffer = component.proxy(component.findComponent("Buffer"))
-Machines = component.proxy(component.findComponent(findClass(machines_name)))
-spliter = component.proxy(component.findComponent(SPLITER_NAME)[1])
-local gpu = computer.getPCIDevices(findClass("GPU_T1_C"))[1]
-gpu = computer.getPCIDevices(findClass("GPUT1"))[1]
+local buffer = component.proxy(component.findComponent("Buffer"))
+local Machines = component.proxy(component.findComponent(findClass(machines_name)))
+local splitter = component.proxy(component.findComponent(SPLITER_NAME)[1])
+local merger  = component.proxy(component.findComponent(MERGER_NAME)[1])
+-- local gpu = computer.getPCIDevices(findClass("GPU_T1_C"))[1]
+local gpu = computer.getPCIDevices(findClass("GPUT1"))[1]
 local scr = component.proxy(component.findComponent(SCREEN_NAME)[1])
+local netcard = component.proxy(NETWORK_UUID)
+
+
+netcard:open(NETWORK_PORT)
 
 ---------- END LINK COMPONENTS SECTION ----------
 -------------------------------------------------
 
+local defaultAlpha = 1
+
+local colors = {
+    Normal = {0.5, 0.5, 0.5, defaultAlpha},
+    Number = {0.1, 0.1, 0.5, defaultAlpha},
+    White = {1,1,1,defaultAlpha},
+    Black = {0,0,0,defaultAlpha},
+    Blue = {0,0,0.5, defaultAlpha},
+    Green = {0, 0.57, 0, defaultAlpha},
+    LightRed = {1, 0, 0, defaultAlpha},
+    Brown = {0.5, 0,0,defaultAlpha},
+    Purple = {0.61, 0, 0.61, defaultAlpha},
+    Orange = {0.99, 0.5, 0, defaultAlpha},
+    Yellow = {1, 1, 0, defaultAlpha},
+    LightGreen = {0, 0.99, 0, defaultAlpha},
+    Cyan = {0, 0.57, 0.57, defaultAlpha},
+    LightCyan = {0, 1, 1, defaultAlpha},
+    LightBlue = {0.4, 0.4, 0.99, defaultAlpha},
+    Pink = {1, 0, 1, defaultAlpha},
+    Grey = {0.5, 0.5, 0.5, defaultAlpha},
+    LightGrey = {0.83, 0.83, 0.83, defaultAlpha},
+    Lime = {0, 1, 0, defaultAlpha}
+}
 
 ---------- VAR INIT SECTION ----------
 
-firstStart = true
-chowFull = false
-item = { }
-tempBuffer = buffer[1]
-inv = tempBuffer:getInventories()[1]
+local doControl = true
+local items = { }
+local tempBuffer = buffer[1]
+local inv = tempBuffer:getInventories()[1]
 gpu:bindScreen(scr)
-h,l = gpu:getSize()
-print(h,l)
+-- local h,l = gpu:getSize()
+-- print(h,l)
 gpu:setSize(15,15)
+event.listen(netcard)
+event.clear()
+local EMBED = { }
 
+local MODE_IDLE   = 0
+local MODE_REFILL = 1
+local MODE_REGEN  = 2
+local Mode = MODE_IDLE
+local ActiveTimer = TIMER_IDLE
 
+local MergerIn  = false
+local MergerOut = false
+local SpliterIn  = false
+local SpliterOut = false
+
+local Cycle = 0
 
 ---------- END VAR INIT SECTION ----------
 ------------------------------------------
@@ -67,122 +142,230 @@ gpu:setSize(15,15)
 ---------- FUNCTION SECTION ----------
 
 function debug(text, force) if (DEBUG_ACTIVE or force==1) then print(text) end  end
-
-function getInventory()
- item = { }
- invSize = inv.Size
+                            --elseif (DEBUG_ACTIVE or force<=2) then print(text) end  end
+function getInventory(inv)
+ items = { }
+ local invSize = inv.Size
  inv:sort()
  print("Items in Inventory: "..inv.itemCount)
   for i =0,invSize-1,1 do
    stack = inv:getStack(i)
-   k = i+1
     if stack.item.type then
      itemName = stack.item.type.name
      itemCount = inv.itemCount
      print("Slot "..i..": "..itemName)
-     item[k] = itemName
-      overflowList(itemName)
-      if itemName == listedName then
-       List[itemName] = true
-       print(itemName..": "..tostring(List[itemName]))
+     items[i+1] = itemName
+      --overflowList(itemName, itemCount)
+      if List[itemName] == nil then
+       EMBED = { }
+       EMBED["Prod"] = false
+       EMBED["Rat"] = 100
+       EMBED["Cycle"] = Cycle
+       List[itemName] = EMBED
       end
-      else
-        if #item ~= 0 and i == k-1 then table.remove(item,k) end
+     List[itemName].Prod = true
+     List[itemName].Cycle = Cycle
+     print("Debug: "..itemName..": "..tostring(List[itemName]))
     end
   end
 end
 
-
-function overflowList(name)
-  for _,v in pairs(List) do
-    if name == v then
-     listedName = v
-     break
-    end
-  end
-end
-
-                                                           
 function machinesControl()
- local r 
-  for _,v in pairs(Machines) do
-   r = v:getRecipe().name
-   overflowList(r)
-   if r == listedName then
-     if List[r] and not v.standby then
-      v.standby = true 
-      state = string.format("%s -> %s",v,v.standby)
-     elseif not List[r] and v.standby then
-      v.standby = false
-      state = string.format("Machine: %s -> %s",v,v.standby)     
-     else
-      state = string.format("Machine: %s -> %s",v,v.standby)
-     end
-   end
+  local r 
+    for _,v in pairs(Machines) do
+      r = v:getRecipe().name
+      if List[r] ~= nil and not v.standby then
+       v.standby = true 
+       debug("[MC]".."R = "..tostring(r).." - "..tostring(List[r]).." - "..tostring(v.standby))
+      elseif List[r] == nil and v.standby then
+       v.standby = false
+       debug("[MC]".."R = "..tostring(r).." - "..tostring(List[r]).." - "..tostring(v.standby))
+      end
+    end
+  end
+
+
+function checkSpliter()
+  local i = splitter:getInput(4)
+  if i.type then  
+   itemName = i.type.name
+    if List[itemName] == nil then
+     temp_RAT = nil
+    else
+     temp_RAT = List[itemName].Rat
+    end
+   debug("Spliter Item Name: "..tostring(itemName).." - "..tostring(temp_RAT).."%")
+      if List[itemName] ~= nil and List[itemName].Rat > RATIO_MIN then
+       print(tostring(itemName).." - Ratio Not Matching - "..List[itemName].Rat.."%") splitter:transferItem(OVERFLOWN_OUT)
+      else print(tostring(itemName).." - Ratio Matching - ".."NC %") splitter:transferItem(MAIN_OUT) end
+  end
+end
+
+function checkMerger()
+  i = merger:getInput(4)
+  if i.type then 
+   itemName = i.type.name
+   debug(tostring(itemName).." - Matching - "..tostring(ITEM),1) 
+   merger:transferItem(REFILL_IN)
+  end
+end
+
+function startMode()
+  if Mode == MODE_IDLE then
+    -- End Regen Mode
+    -- *nothing*
+    -- Start Idle Mode
+    -- event.listen(merger) -- To detect overflow on event
+    event.listen(netcard)
+    ActiveTimer = NORMAL_TIMER
+
+  elseif Mode == MODE_REFILL then
+    -- End Idle Mode
+    -- *nothing*
+    -- Start Refill Mode
+    event.ignore(netcard)
+	event.listen(splitter)
+    checkSpliter()
+--    SpliterIn  = ??
+--    SpliterOut = Spliter:canOutput(MAIN_OUT) and Spliter:canOutput(OVERFLOW_OUT)
+	ActiveTimer = TIMER_WORKING
+
+  elseif Mode == MODE_REGEN then
+    -- End Refill Mode
+    event.ignore(splitter)
+    -- Start Regen Mode
+    event.listen(merger)
+    MergerIn  = merger:getInput(4)
+    assert(merger.canOutput)
+    checkMerger()
+    MergerOut = true
+    ActiveTimer = TIMER_WORKING
+  end
+end
+---------- END FUNCTION SECTION ----------
+------------------------------------------
+
+
+---------- HELPER FUNCTION SECTION ----------
+
+function removeTableLine(tab,word)
+  for _,v in pairs(tab) do
+    if word == v then 
+     table.remove(tab,_)
+    end
   end
 end
 
 function initList(List)
   for _,v in ipairs(List) do
-   List[v] = false
+   List[v].Prod = false
   end
 end
 
-function checkSpliter()
- i = spliter:getInput(4)
-  if i.type then 
-   itemSlot = 4
-   debug(""..itemSlot.." "..i.type.name) 
-   itemName = i.type.name
-   debug("Item Name: "..tostring(itemName))
-    for _,v in pairs(LISTREFILL) do
---debug("Item Name _: "..tostring(_))
-      if itemName == v and type(v) == "string" then print(tostring(itemName).." - Matching - "..tostring(v)) spliter:transferItem(MAIN_OUT)
-      elseif itemName ~= v and type(v) == "string" then print(tostring(itemName).." - Not Matching - "..tostring(v)) spliter:transferItem(OVERFLOW_OUT)
-      end
+---------- END HELPER FUNCTION SECTION ----------
+-------------------------------------------------
+
+---------- TEXT UTILS FUNCTION SECTION ----------
+
+function STRSplit(message)
+
+local sep   = "#"
+local spos  = 0
+local epos  = 0
+
+-- Init First Loop   ---- Line 20
+epos  = string.find(message, sep, spos)
+  return function ()
+    local ratio
+    local name
+    if epos then
+      name  = string.sub(message, spos, epos-1)
+      -- Client Side only --
+      spos  = epos
+      epos  = string.find(message, sep, spos+1)
+      ratio = tonumber(string.sub(message, spos+1, epos-1), 10)
+      -- End Client Side --
+     
+      g = string.format("Name: %s = %s",name,ratio)
+      print(g)
+      
+       
+      -- Prepare next loop
+      spos  = epos+1 
+      epos  = string.find(message, sep, spos)
+      
     end
+    return name, ratio
   end
 end
 
----------- END FUNCTION SECTION ----------
-------------------------------------------
+
+function simpleSerialize(table)  -- Before Send Data
+ local part
+ local message = ""
+  for k,v in pairs(table) do
+   part    = k.."#"..tostring(table[k].Rat).."#"
+   message = message .. k.."#"
+  end
+ --debug("Message: "..message,1)
+ return message
+end
+
+---------- END TEXT UTILS FUNCTION SECTION ------
+-------------------------------------------------
 
 ---------- SCREEN SECTION ----------
 
 function setBackgroundColor(colorName)
-    gpu:setBackground(BackColors[colorName][1],BackColors[colorName][2],BackColors[colorName][3],BackColors[colorName][4])
+ gpu:setBackground(BackColors[colorName][1],BackColors[colorName][2],BackColors[colorName][3],BackColors[colorName][4])
+ --gpu:setBackground(Colors[colorName][1],Colors[colorName][2],Colors[colorName][3],Colors[colorName][4])
 end
 
 function setForegroundColor(colorName)
-    gpu:setForeground(FrontColors[colorName][1],FrontColors[colorName][2],FrontColors[colorName][3],FrontColors[colorName][4])
+ gpu:setForeground(FrontColors[colorName][1],FrontColors[colorName][2],FrontColors[colorName][3],FrontColors[colorName][4])
+ --gpu:setBackground(Colors[colorName][1],Colors[colorName][2],Colors[colorName][3],Colors[colorName][4])
 end
 
 function setColor(colorName)
-    setBackgroundColor(colorName)
-    setForegroundColor(colorName)
+ setBackgroundColor(colorName)
+ setForegroundColor(colorName)
 end
 
 function setDefaultColor()
-    setColor("default")
+ setColor("default")
 end
 
 function clearScreen()
-    setDefaultColor()
-    gpu:fill(0,0,w,h," ")
-    gpu:flush()
+  setDefaultColor()
+  gpu:fill(0,0,w,h," ")
+  gpu:flush()
+end
+
+function clearLine(y)
+  setDefaultColor()
+  gpu:fill(0,y,w,y," ")
+  gpu:flush()
 end
 
 function listOnScreen()
- gpu:setText(x,0,"Amount: "..tostring(itemCount))
- --y = 2
- gpu:setText(x,2,"Items: ")
- y = 3
-  for _,v in pairs(item) do
-   gpu:setText(x,y,v.." ("..tostring(_)..")")
-   y = y+1
-    if y >= h then y = 3 end
+  local y = 0
+  local slot
+  local name
+  clearLine(y)
+  gpu:setText(x,y,"Amount: "..tostring(itemCount))
+  y = 2
+  gpu:setText(x,y,"Items: ")
+  y = 3
+  for slot, name in pairs(items) do
+    clearLine(y)
+    gpu:setText(x,y,name.." ("..tostring(slot)..")")
+    y = y+1
+    if y >= h then lastY = y y = 3 end
   end
- gpu:flush()
+  lastY = y
+  local lastYSup = lastY +1
+  clearLine(lastYSup)
+  gpu:flush()
 end
 
 ---------- END SCREEN SECTION ----------
@@ -192,26 +375,123 @@ end
 
 --lastRefresh = computer.millis()
 lastAlert = false
-initList(List)
+--initList(List)
 
 clearScreen()
 
 while true do
- t = event.pull(TIMER)
-   getInventory()
-    for _,v in pairs(item) do
-      if v == List[itemName] then
-        check = inv:getStack(_)
-        if not check.item.type then
-         List[itemName] = false
-          if #item ~= 0 then
-           machinesControl()
-           table.remove(item,_)
-          end
-        end 
+  E,S,Arg1,Arg2,Arg3 = event.pull(ActiveTimer)
+  --  Event Name      , Component, Arg1  , Arg2, Arg3
+  -- "NetworkMessage" , netcard  , Sender, Port, Message
+  -- "ItemRequest"    , merger   , Input , Item
+  -- "ItemOutputted"  , merger   , Item  , ----  -- 
+  -- "ItemRequest"    , splitter  , Item  , ----  -- Un item arrive
+  -- "ItemOutputted"  , splitter  , Output, Item  -- Un item est sorti
+  --debug("Type: "..tostring(S))
+  --debug("Mode: "..Mode)
+  
+  if Mode == MODE_REFILL and S == splitter then
+    if Arg2 == nil then -- Un item arrive
+      assert(E == "ItemRequest", "Unexpected splitter event 1:"..E)
+      SpliterIn = true
+    else -- Un item est sorti
+      assert(E == "ItemOutputted", "Unexpected splitter event 2:"..E)
+      SpliterOut = true
+    end
+    if SpliterIn and SpliterOut then
+      checkSpliter()
+      SpliterIn = false
+      SpliterOut = false
+    end
+    
+  elseif Mode == MODE_REGEN and S == merger and Arg3 == REFILL_IN then
+    if Arg2 == nil then
+      assert(E == "ItemOutputted", "Unexpected merger event 1: "..E)
+      MergerOut = true
+    elseif Arg1 == REFILL_IN then
+      assert(E == "ItemRequest", "Unexpected merger event 2:"..E)
+      MergerIn = true
+    else -- 
+      error("Unexpected merger event 3:"..E)
+    end
+    if MergerIn and MergerOut then
+      checkMerger()
+      MergerIn = false
+      MergerOut = false
+    end
+    
+  elseif S == netcard then -- Arg1:Sender, Arg2:Port, Arg3:Message
+    local Sender  = Arg1
+    local Port    = Arg2
+    local Message = Arg3
+    print("Message from : " .. Sender .. " port: ".. Port)
+    print("Message: " .. Message)
+    for itemName, ratio in STRSplit(Message) do
+      if List[itemName] ~= nil then
+       print("List["..itemName.."] = "..tostring(List[itemName]))
+       List[itemName].Rat = ratio
+        if List[itemName].Rat < RATIO_MIN and List[itemName].Cycle == Cycle then
+         Mode = MODE_REFILL
+         --print("Name: "..itemName)
+         --print("Ratio: "..ratio)
+        end
       end
     end
- machinesControl()
- checkSpliter()
- listOnScreen()
+    if Mode == MODE_REFILL then
+      startMode()
+    end
+  
+  elseif e == nil then -- Timer
+    if Mode == MODE_IDLE then
+      Cycle = Cycle + 1
+      getInventory(inv)
+      for k,v in pairs(items) do
+       check = inv:getStack(k)
+        if tableLen == nil then 
+          tableLen = #items 
+        else
+          if tableLen > #items or tableLen < #items then
+           doControl = true
+           List[v].Prod = true
+          else
+           List[v].Prod = false
+          end
+        end  
+       doControl = doControl or #items
+      end
+   
+      
+      if doControl then
+        machinesControl() -- 
+        doControl = false
+      end
+      
+      -- List Clean Up
+      for Name, v in pairs(List) do
+        if v.Cycle ~= Cycle then
+          List[Name] = nil
+          doControl = true
+        end
+      end
+      
+      
+      --checkSpliter()
+      listOnScreen()
+      s = simpleSerialize(List)
+      if s ~= "" then
+       netcard:send(NETWORK_UUID_SERVER, NETWORK_PORT, s)
+       debug("Sending on "..NETWORK_PORT.." : "..s,1)
+      end
+    elseif Mode == MODE_REFILL then
+      Mode = MODE_REGEN
+	  startMode()
+	  
+    elseif Mode == MODE_REGEN then
+      Mode = MODE_IDLE
+      startMode()
+    end
+  else
+    error("Unexpected Event: " .. tostring(E) .. "from " .. tostring(S) .. " in mode  " .. tostring(Mode))
+  end
+  --getInventory(inv)
 end
