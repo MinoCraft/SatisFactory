@@ -1,9 +1,14 @@
+--------------------------------------
+------------ SERVER SIDE  ------------
+---------- WORK IN PROGRESS ----------
+--------------------------------------
+
 -------------------Start Settings Section------------------
 ---Note neither w nor h are directly related to Physical screen size
 ---they just control in how many "pixels" the physical space is divided
 --- I recommend leaving it default and test then change and see what fits your screen
 ---Also the bigger the numbers the smaller the text
-w = 100 --Screen Width 85
+w = 85 --Screen Width 85
 h = 22 -- Screen Height 31
 adjustRefresh = 0
 
@@ -48,12 +53,14 @@ colors = {
     LightGrey = {0.83, 0.83, 0.83, defaultAlpha},
 }]]--
 
---[[t = colors[defaultChar]
-print(t)
-for k,v in pairs(t) do
- print(v)
-end]]--
 
+---- Network Section ----
+
+NETWORK_UUID = "E4847B6540BCB743068D1AB1A4216AB5" -- Network Card UUID
+NETWORK_PORT = 10                                 -- Network Channel
+NETWORK_UUID_CLIENT = ""                          -- Server Network Card UUID
+
+---- End Network Section ----
 
 
 BackColors = {default= {0,0,0,0},
@@ -134,7 +141,6 @@ stackSize = {
     ["AI Limiter"] = 100,
     ["Rotor"] = 100,
     ["Motor"] = 50,
-    --["Photovoltaic Cell"] = 10,
     ["Biomass"] = 100,
     ["Reinforced Iron Plate"] = 100,
     ["Quartz Crystal"] = 100,
@@ -205,6 +211,7 @@ stackSize = {
   -- End Ficsit Farming --
 }
 ------------------End StackSize Settings------------------
+
 -------------------Start Helper Functions------------------
 function setBackgroundColor(colorName)
     gpu:setBackground(BackColors[colorName][1],BackColors[colorName][2],BackColors[colorName][3],BackColors[colorName][4])
@@ -284,7 +291,44 @@ end
 
 ----------------------End Helper Functions------------------
 
-----------------------Start Functions for Display Stuff ------------------
+---------------------- Text Utils Functions ------------------
+
+function STRSplit(message)
+
+local sep   = "#"
+local spos  = 0
+local epos  = 0
+
+-- Init First Loop   ---- Line 20
+epos  = string.find(message, sep, spos)
+print("Spos: "..tostring(spos))
+print("String Length: "..string.len(message))
+  return function ()
+    --local ratio
+    local name
+    if epos then
+      name  = string.sub(message, spos, epos-1)
+      spos  = epos+1 
+      epos  = string.find(message, sep, spos)  
+    end
+    return name
+  end
+end
+
+
+function simpleSerialize(table)  -- Before Send Data
+    local part
+    local message = ""
+    for k,v in pairs(table) do
+        part    = k.."#"..tostring(table[k].Rat).."#"
+        message = message .. part
+    end
+    return message
+end
+
+---------------------- End Text Utils Functions ------------------
+
+---------------------- Start Functions for Display Stuff ------------------
 
 function drawHeader(row)
     local colStart = startCol
@@ -389,13 +433,6 @@ function DrawTable()
     gpu:flush()
 end
 
---[[function resScale(w)
- if w >= 100 then
-  wR = w/2-string.len(buttonText_Refresh)
- else
-  wR = w/2-string.len(buttonText_Refresh)/2
- end
-end]]--
 ----------------------Start Timer Functions ------------------
 
 local initProgress = {["currentTime"] = computer.millis()}
@@ -410,7 +447,6 @@ end
 
 function showTimer()
  gpu:setForeground(1,1,1,1)
- --gpu:setSize(80)
   if w >= 100 then   
    gpu:setText(0, h-1, "Run Time: " .. difTime(initProgress["currentTime"]))
   else
@@ -431,7 +467,7 @@ function getContainerInfo(container)
      debugData =itemName
     end
     maxInventory = itemStackSize*inventorySize 
-    print(debugData)
+    --print(debugData)
     containerInfo = {name = "nothing", count = 0,capacity=inventorySize}
     for i=0,inventorySize-1,1 do
         stack = inv:getStack(i)
@@ -467,7 +503,10 @@ comp = component.findComponent(findClass("Screen"))[1]
 screen = component.proxy(comp)
 gpu:bindScreen(screen)
 gpu:setSize(w,h)
-event.listen(gpu)
+event.clear()
+netcard = component.proxy(NETWORK_UUID)
+netcard:open(10)--NETWORK_PORT)
+event.listen()
 
 pages = {}
 items = {}
@@ -487,6 +526,7 @@ function getContainerData()
     end
   end
 end
+
 ---Main Loop---
 
 if firstStart then
@@ -497,26 +537,40 @@ print(refreshData)
 while true do
     if computer.millis()-lastRefresh >= refreshTime*1000 or firstStart then
         firstStart = false
-        --Containers = component.proxy(component.findComponent(findClass("FGBuildableStorage")))
-        --items = {}
-        --for _,v in pairs(Containers) do
-         --   CurrentInfo = getContainerInfo(v)
-          --  if CurrentInfo.name ~= "nothing" then
-          --      addToItems(CurrentInfo)
-          --  end
-        --end
         getContainerData()
         setMaxPages()
         DrawTable()
         itemsLast = items
         lastRefresh = computer.millis()
-         --showTimer()
+        --showTimer()
     end
 
-    showTimer()
+ showTimer()
+
+
+
+
+ e, s, sender, port, message = event.pull(refreshTime)
+  if e == "NetworkMessage" then
+   print("Sender: " .. sender)
+   print("Port: " .. port)
+   print("Message: " .. message)
+   s = ""
+    for k, v in STRSplit(message) do
+     print("Name: "..tostring(k))
+     local capacityPercent = math.floor(items[k].count/items[k].capacity*100) -- Ratio Calcul to Export
+     print(k.." Percent: "..capacityPercent)
+     
+     data = k.."#"..tostring(capacityPercent).."#"
+     s = s.. data
+    end
+print("S: "..s)
+   netcard:send(sender, port, s) 
+  end
+
 
     signal, sender, x, y = event.pull(refreshTime)
-    if signal == "OnMouseDown" then--or "OnMouseLeft" then
+    if e == "OnMouseDown" then--or "OnMouseLeft" then
      local xR
         if x>=0 and x<=string.len(buttonText_PrevPage) and y==h-2 and page > 1 then
             page=page-1
@@ -526,13 +580,10 @@ while true do
             page=page+1
             DrawTable()
         end
-        --resScale(w)
-        
-        --if x>=wR and x<=wR+string.len(buttonText_Refresh) and y==h-2 then
-        xR = math.floor(w/2-string.len(buttonText_Refresh)/2)
+      xR = math.floor(w/2-string.len(buttonText_Refresh)/2)
         if x>=xR and x<=xR+string.len(buttonText_Refresh) and y==h-2 then
-            getContainerData()
-            DrawTable()
+         getContainerData()
+         DrawTable()
         end        
     end
 end
